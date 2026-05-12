@@ -1,13 +1,3 @@
-# Ojo de Halcón — Autonomous Trading System
-
-Autonomous futures trading system built on NestJS with a multi-agent architecture.
-Monitors market conditions, detects setups, executes orders and manages positions
-without human intervention once activated.
-
----
-
-## Architecture Overview
-
 ┌─────────────────────────────────────────────────┐
 │                  NestJS Backend                  │
 │                                                  │
