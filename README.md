@@ -1,3 +1,14 @@
+# Ojo de Halcón — Autonomous Trading System
+
+Autonomous futures trading system built on NestJS with a multi-agent architecture.
+Monitors market conditions, detects setups, executes orders and manages positions
+without human intervention once activated.
+
+---
+
+## Architecture Overview
+
+```
 ┌─────────────────────────────────────────────────┐
 │                  NestJS Backend                  │
 │                                                  │
@@ -15,21 +26,21 @@
 │  │  POST /tp-watcher/cascade/:symbol        │    │
 │  └──────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────┘
-│
-▼
+           │
+           ▼
 ┌─────────────────────┐
 │   Binance Futures   │
 │   REST + Algo API   │
 │   USDⓈ-M Futures   │
 └─────────────────────┘
-
-
+```
 
 ---
 
 ## Agents
 
 ### Mantis — Short on pump exhaustion
+
 Monitors pumped assets and waits for confirmed exhaustion before entering SHORT.
 Evaluates entry conditions every minute using a scoring system (0–12):
 
@@ -42,17 +53,20 @@ Entry triggers only when score ≥ 7 with confirmed bearish divergence.
 Structural stop loss placed above the pump high — never percentage-based.
 
 ### TP Watcher — Post-entry position manager
+
 Runs every 60 seconds silently. Activates when price is within 8% of the TP target.
 Reads momentum snapshot (RSI 15m, volume ratio, funding) and recommends trailing
 stop callback rate. Cancels fixed TP and places trailing stop automatically.
 Activates cascade mode via HTTP to the motor on confirmation.
 
 ### Ojo de Halcón — Full autonomous cycle
+
 Detects technical setups on 15m timeframe using BB + SMC filters.
 Escalates from 5min polling to 30s when setup is forming.
 Executes MARKET entry + SL/TP/Trailing Stop via Algo Order API automatically.
 Launches a Node.js monitor script that queries Binance directly every 5min —
-zero token consumption between alerts.
+zero token consumption between alerts. Claude Code Monitor listens to stdout
+and activates only on `ALERT:LOSS_EXIT` or `ALERT:PROFIT_EXIT`.
 
 ---
 
@@ -63,6 +77,7 @@ zero token consumption between alerts.
 - **Exchange:** Binance USDⓈ-M Futures (REST + Algo Order API)
 - **Architecture:** Multi-agent, event-driven, single NestJS process
 - **Process manager:** PM2
+- **Monitoring:** Claude Code Monitor on PM2 stdout
 
 ---
 
@@ -88,37 +103,39 @@ Allows simultaneous long and short positions on the same symbol.
 
 **Zero-token monitoring**
 Monitor script runs as a standalone Node.js process querying Binance directly.
-Only activates on specific alert patterns in stdout — not on every tick.
+Claude Code is only activated on specific alert patterns in stdout — not on every tick.
 
 ---
 
 ## Project Structure
 
-├── src/
-│   ├── mantis/
-│   │   ├── mantis.service.ts
-│   │   └── mantis.controller.ts
-│   ├── tp-watcher/
-│   │   ├── tp-watcher.service.ts
-│   │   └── tp-watcher.controller.ts
-│   └── app.module.ts
-├── scripts/
-│   ├── monitor/
-│   │   └── monitor.cjs
-│   └── utils/
-│       └── current-time.cjs
-└── docs/
-
-
+```
+src/
+├── mantis/
+│   ├── mantis.service.ts       # scanner, scoring, entry logic
+│   └── mantis.controller.ts    # HTTP activation endpoint
+├── tp-watcher/
+│   ├── tp-watcher.service.ts   # position watcher, cascade
+│   └── tp-watcher.controller.ts
+└── app.module.ts
+scripts/
+├── monitor/
+│   └── monitor.cjs             # standalone Node monitor
+└── utils/
+    └── current-time.cjs        # session/funding time helper
+docs/                           # strategy documentation
+```
 
 ---
 
 ## Environment
 
-| BINANCE_ENV | Endpoint |
-|---|---|
-| `testnet` | testnet.binancefuture.com |
-| `production` | fapi.binance.com |
+Supports dual environment via `BINANCE_ENV` variable:
+
+| Value          | Endpoint                  |
+| -------------- | ------------------------- |
+| `testnet`    | testnet.binancefuture.com |
+| `production` | fapi.binance.com          |
 
 ---
 
